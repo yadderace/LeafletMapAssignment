@@ -2,11 +2,7 @@
 title: "Leaflet Map"
 author: "Yadder Aceituno"
 date: "November 1, 2019"
-output:
-  html_document:
-    pandoc_args: [
-        "--output=index.html"
-    ]
+output: html_document
 ---
 
 ```{r setup, include=FALSE}

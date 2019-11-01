@@ -1,0 +1,149 @@
+---
+title: "Leaflet Map"
+author: "Yadder Aceituno"
+date: "November 1, 2019"
+output:
+  html_document:
+    pandoc_args: [
+        "--output=index.html"
+    ]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+For this assignment I had to create a webpage where I can show how to plot a map with Leaflet (library). I was able to use any dataset so I decided to find something about earthquakes occurrences around the world. The place that I go when I need data was Kaggle, and I found an interesting competition about the relation between earhquakes and solar system objects. The dataset used in that competition is used here to complete my assingment.
+
+
+## Libraries
+
+Lets import the libraries
+
+```{r library, warning=FALSE}
+library("leaflet")
+library("dplyr")
+```
+
+
+## Data Source
+
+You can find the research on this link: https://www.kaggle.com/aradzhabov/earthquakes-solar-system-objects/download
+
+Lets make a first look for the data.
+
+```{r first_look_1}
+
+dfDataSource <- read.csv("SolarSystemAndEarthquakes.csv")
+
+
+# Lets se how many variables the dataframe has.
+ncol(dfDataSource)
+
+```
+
+As we can see, the dataframe has many variables To make the plot we will use only variables called as "earthquake".
+
+
+```{r first_look_2}
+columnsEarhquakes <- colnames(dfDataSource)[grepl("earthquake", colnames(dfDataSource))]
+dfEarthquakes <- dfDataSource[, columnsEarhquakes]
+
+# Summary for dataframe
+summary(dfEarthquakes)
+
+```
+
+## Preparing Data
+
+First, we need to create a classification variable according magnitude.
+
+```{r preparing_1}
+
+dfEarthquakes <- dfEarthquakes %>% 
+                mutate(earthquake.classification = case_when(
+                  (earthquake.mag >= 8) ~ "Great",
+                  (earthquake.mag >= 7) ~ "Major",
+                  (earthquake.mag >= 6) ~ "Strong",
+                  (earthquake.mag >= 5) ~ "Moderate",
+                  (earthquake.mag >= 4) ~ "Light",
+                  TRUE ~ "Minor"
+                ))
+
+table(dfEarthquakes$earthquake.classification)
+```
+
+Now, lets cast the earthquake.time variable as date and then lets create a label variable.
+
+```{r preparing_2}
+# Casting to date
+dfEarthquakes$earthquake.time <- as.Date(dfEarthquakes$earthquake.time)
+
+# Creating a label variable
+dfEarthquakes$label <- paste(as.character(dfEarthquakes$earthquake.time), " | Magnitude:", dfEarthquakes$earthquake.mag, sep = "")
+
+```
+
+## Plotting
+
+
+Now we already have our dataframe to make the leaflet plot. I decided to make a plot where we can see the earthquake ocurrences.
+
+```{r plot, warningFALSE}
+
+dfQuakes <- data.frame(
+  lat = dfEarthquakes$earthquake.latitude,
+  lng = dfEarthquakes$earthquake.longitude,
+  cls = dfEarthquakes$earthquake.classification,
+  lbl = dfEarthquakes$label
+)
+
+dfGreatQuakes <- dfQuakes[dfQuakes$cls == "Great",]
+dfMajorQuakes <- dfQuakes[dfQuakes$cls == "Major",]
+dfStrongQuakes <- dfQuakes[dfQuakes$cls == "Strong",]
+
+greatIcon <- awesomeIcons(
+   icon = 'exclamation-triangle',
+   iconColor = 'white',
+   library = 'fa',
+   markerColor = 'red'
+ )
+
+majorIcon <- greatIcon
+majorIcon$markerColor <- 'orange'
+
+strongIcon <- greatIcon
+strongIcon$markerColor <- 'blue'
+
+
+lfletMap <- leaflet() %>% addTiles() %>% 
+  
+  addAwesomeMarkers(data = dfGreatQuakes, 
+                    lat = ~lat, lng = ~lng,
+                    group = "Great", 
+                    icon = greatIcon, 
+                    label = ~lbl,
+                    clusterOptions = markerClusterOptions()) %>%
+  
+  addAwesomeMarkers(data = dfMajorQuakes, 
+                    lat = ~lat, lng = ~lng,
+                    group = "Major", 
+                    icon = majorIcon,
+                    label = ~lbl,
+                    clusterOptions = markerClusterOptions()) %>%
+  
+  addAwesomeMarkers(data = dfStrongQuakes, 
+                    lat = ~lat, lng = ~lng,
+                    group = "Strong", 
+                    icon = strongIcon,
+                    label = ~lbl,
+                    clusterOptions = markerClusterOptions()) %>%
+  
+  addLayersControl(overlayGroups = c("Great", "Major", "Strong"),
+                   options = layersControlOptions(collapsed = FALSE));
+
+lfletMap
+
+```
